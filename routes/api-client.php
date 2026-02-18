@@ -231,6 +231,15 @@ Route::prefix('/')->middleware([SuspendedAccount::class])->group(function () {
             Route::delete('/{customDomain:id}', [Client\Servers\CustomDomainController::class, 'destroy']);
         });
 
+        Route::group(['prefix' => '/web-hosting'], function () {
+            Route::get('/', [Client\Servers\WebHostingController::class, 'index']);
+            Route::post('/', [Client\Servers\WebHostingController::class, 'store']);
+            Route::put('/{site:id}', [Client\Servers\WebHostingController::class, 'update']);
+            Route::delete('/{site:id}', [Client\Servers\WebHostingController::class, 'destroy']);
+            Route::post('/{site:id}/ssl', [Client\Servers\WebHostingController::class, 'ssl']);
+            Route::post('/{site:id}/ssl/renew', [Client\Servers\WebHostingController::class, 'renewSsl']);
+        });
+
         Route::group(['prefix' => '/users'], function () {
             Route::get('/', [Client\Servers\SubuserController::class, 'index']);
             Route::post('/', [Client\Servers\SubuserController::class, 'store']);

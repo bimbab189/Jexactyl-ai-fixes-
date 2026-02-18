@@ -18,6 +18,7 @@ const ModsContainer = lazy(() => import('@server/mods/ModsContainer'));
 const ModpacksContainer = lazy(() => import('@server/modpacks/ModpacksContainer'));
 const ExtensionsRouter = lazy(() => import('@server/extensions/ExtensionsRouter'));
 const CustomDomainsContainer = lazy(() => import('@server/domains/CustomDomainsContainer'));
+const WebHostingContainer = lazy(() => import('@server/webHosting/WebHostingContainer'));
 
 const server: ServerRouteDefinition[] = [
     route('', ServerConsoleContainer, {
@@ -83,6 +84,13 @@ const server: ServerRouteDefinition[] = [
         name: 'Custom Domains',
         icon: Icon.GlobeIcon,
         category: 'configuration',
+    }),
+    route('web-hosting/*', WebHostingContainer, {
+        permission: 'allocation.*',
+        name: 'Web Hosting',
+        icon: Icon.CollectionIcon,
+        category: 'configuration',
+        condition: flags => flags.webHostingEnabled,
     }),
     route('startup/*', StartupContainer, {
         permission: 'startup.*',

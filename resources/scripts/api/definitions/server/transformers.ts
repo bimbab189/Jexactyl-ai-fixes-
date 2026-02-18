@@ -25,6 +25,7 @@ export default class Transformers {
         modsEnabled: data.mods_enabled || false,
         modpacksSupported: data.modpacks_supported || false,
         extensionsEnabled: data.extensions_enabled || false,
+        webHostingEnabled: data.web_hosting_enabled || false,
         billingProductId: data.billing_product_id,
         billingDays: data.billing_days,
         renewalDate: data.renewal_date ? new Date(data.renewal_date) : undefined,

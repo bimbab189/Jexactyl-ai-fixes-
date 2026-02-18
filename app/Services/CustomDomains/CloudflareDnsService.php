@@ -89,6 +89,7 @@ class CloudflareDnsService
         string $target,
         ?string $tokenOverride = null,
         ?string $forcedType = null,
+        ?bool $proxiedOverride = null,
     ): array
     {
         $type = $forcedType !== null
@@ -107,7 +108,7 @@ class CloudflareDnsService
             throw new Exception('CNAME record content must be a hostname, not an IP address.');
         }
 
-        $proxied = (bool) config('modules.custom_domains.cloudflare.proxied', false);
+        $proxied = $proxiedOverride ?? (bool) config('modules.custom_domains.cloudflare.proxied', false);
 
         $existingRecords = $this->findRecordsByName($zoneId, $name, $tokenOverride);
         $existing = collect($existingRecords)->first(fn (array $record) => ($record['type'] ?? null) === $type);

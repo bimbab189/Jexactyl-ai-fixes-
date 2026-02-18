@@ -32,6 +32,7 @@ interface Server {
     modsEnabled: boolean;
     modpacksSupported: boolean;
     extensionsEnabled: boolean;
+    webHostingEnabled: boolean;
     billingProductId?: number;
     billingDays?: number;
     renewalDate?: Date | undefined;

@@ -163,6 +163,28 @@ Route::middleware([AdminSubject::class])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | Web Hosting Module Routes
+    |--------------------------------------------------------------------------
+    |
+    | Endpoint: /api/application/web-hosting
+    |
+    */
+    Route::group(['prefix' => '/web-hosting'], function () {
+        Route::get('/settings', [Application\WebHosting\WebHostingController::class, 'settings']);
+        Route::get('/options', [Application\WebHosting\WebHostingController::class, 'options']);
+        Route::put('/settings', [Application\WebHosting\WebHostingController::class, 'updateSettings']);
+
+        Route::get('/servers', [Application\WebHosting\WebHostingController::class, 'servers']);
+        Route::get('/servers/{server:id}', [Application\WebHosting\WebHostingController::class, 'server']);
+        Route::post('/servers/{server:id}/sites', [Application\WebHosting\WebHostingController::class, 'storeSite']);
+        Route::put('/servers/{server:id}/sites/{site:id}', [Application\WebHosting\WebHostingController::class, 'updateSite']);
+        Route::delete('/servers/{server:id}/sites/{site:id}', [Application\WebHosting\WebHostingController::class, 'deleteSite']);
+        Route::post('/servers/{server:id}/sites/{site:id}/ssl', [Application\WebHosting\WebHostingController::class, 'ssl']);
+        Route::post('/servers/{server:id}/sites/{site:id}/ssl/renew', [Application\WebHosting\WebHostingController::class, 'renewSsl']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
     | AI Controller Routes
     |--------------------------------------------------------------------------
     |

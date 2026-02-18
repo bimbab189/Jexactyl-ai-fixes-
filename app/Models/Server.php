@@ -317,6 +317,14 @@ class Server extends Model
     }
 
     /**
+     * Gets all web hosting sites associated with this server.
+     */
+    public function webHostingSites(): HasMany
+    {
+        return $this->hasMany(WebHostingSite::class, 'server_id');
+    }
+
+    /**
      * Gets information for the nest associated with this server.
      */
     public function nest(): BelongsTo

@@ -4,6 +4,7 @@ namespace Everest\Transformers\Api\Client;
 
 use Everest\Models\Egg;
 use Everest\Models\Server;
+use Everest\Models\Setting;
 use Everest\Models\Allocation;
 use Everest\Models\Permission;
 use Everest\Models\ExtensionConfig;
@@ -62,6 +63,25 @@ class ServerTransformer extends Transformer
         $extensionsEnabled = config('modules.extensions.enabled', false) && 
             !empty(ExtensionConfig::getEnabledForServer($server));
 
+        $webHostingEnabled = false;
+        $configuredEggIds = $this->configuredWebHostingEggIds();
+        if (!empty($configuredEggIds)) {
+            $webHostingEnabled = in_array((int) $server->egg_id, $configuredEggIds, true);
+        }
+
+        $eggName = strtolower(trim((string) ($server->egg?->name ?? '')));
+        $configuredWebHostingEggName = strtolower(trim((string) config('modules.web_hosting.egg.name', 'Web Hosting')));
+        $eggFeatures = collect((array) ($server->egg?->inherit_features ?? []))
+            ->map(fn ($value) => strtolower(trim((string) $value)));
+
+        if (!$webHostingEnabled && $eggName !== '' && ($eggName === $configuredWebHostingEggName || $eggName === 'web hosting')) {
+            $webHostingEnabled = true;
+        }
+
+        if (!$webHostingEnabled) {
+            $webHostingEnabled = $eggFeatures->contains(fn (string $feature) => in_array($feature, ['web-hosting', 'web_hosting', 'webhosting', 'web hosting'], true));
+        }
+
         return [
             'server_owner' => $user->id === $server->owner_id,
             'identifier' => $server->uuidShort,
@@ -92,6 +112,7 @@ class ServerTransformer extends Transformer
             'mods_enabled' => $server->mods_enabled,
             'modpacks_supported' => $modpacksSupported,
             'extensions_enabled' => $extensionsEnabled,
+            'web_hosting_enabled' => $webHostingEnabled,
             'billing_product_id' => $server->billing_product_id,
             'billing_days' => $server->billing_days,
             'feature_limits' => [
@@ -159,5 +180,29 @@ class ServerTransformer extends Transformer
         }
 
         return $this->collection($server->subusers, new SubuserTransformer());
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function configuredWebHostingEggIds(): array
+    {
+        $fromSettings = Setting::get('settings::modules:web_hosting:egg:ids');
+
+        $decoded = [];
+        if (is_array($fromSettings)) {
+            $decoded = $fromSettings;
+        } elseif (is_string($fromSettings) && trim($fromSettings) !== '') {
+            $value = json_decode($fromSettings, true);
+            if (is_array($value)) {
+                $decoded = $value;
+            }
+        }
+
+        if (empty($decoded)) {
+            $decoded = (array) config('modules.web_hosting.egg.ids', []);
+        }
+
+        return array_values(array_unique(array_filter(array_map('intval', $decoded), fn (int $id) => $id > 0)));
     }
 }
