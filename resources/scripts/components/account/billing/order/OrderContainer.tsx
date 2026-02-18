@@ -32,6 +32,9 @@ import {
 import { getStripeIntent, getStripeKey } from '@/api/routes/account/billing/orders/stripe';
 import AdminCheckbox from '@/elements/AdminCheckbox';
 import { ValidateCouponResponse } from '@/api/routes/account/billing/coupons';
+import { getAvailableCustomDomains } from '@/api/routes/account/billing/customDomains';
+import Input from '@/elements/Input';
+import Select from '@/elements/Select';
 import classNames from 'classnames';
 
 export default () => {
@@ -60,6 +63,22 @@ export default () => {
     const [legalAgreed, setLegalAgreed] = useState<boolean>(false);
 
     const hasValidSelectedNode = Number.isInteger(selectedNode) && selectedNode > 0;
+    const [customDomainOptions, setCustomDomainOptions] = useState<
+        Array<{ id: number; domain: string; wildcard_enabled: boolean }>
+    >([]);
+    const [domainMappings, setDomainMappings] = useState<
+        Array<{
+            domain_id: number;
+            domain: string;
+            subdomain: string;
+            port: number;
+            protocol: 'tcp' | 'udp' | 'both';
+        }>
+    >([]);
+    const [selectedDomainId, setSelectedDomainId] = useState<number>(0);
+    const [mappingSubdomain, setMappingSubdomain] = useState<string>('');
+    const [mappingPort, setMappingPort] = useState<number>(25565);
+    const [mappingProtocol, setMappingProtocol] = useState<'tcp' | 'udp' | 'both'>('both');
 
     // Wizard step state
     const [currentStep, setCurrentStep] = useState<number>(1);
@@ -125,21 +144,6 @@ export default () => {
             default:
                 return false;
         }
-    };
-
-    // Get step title
-    const getStepTitle = (step: number) => {
-        const stepMap: { [key: number]: string } = {};
-        let stepNum = 1;
-
-        stepMap[stepNum++] = 'Select Location';
-        if (availableEggs.length > 1) stepMap[stepNum++] = 'Select Server Type';
-        stepMap[stepNum++] = 'Select Billing Cycle';
-        if (eggs && eggs.some(v => v.isEditable)) stepMap[stepNum++] = 'Configure Server';
-        stepMap[stepNum++] = 'Review & Confirm';
-        stepMap[stepNum++] = 'Payment';
-
-        return stepMap[step] || '';
     };
 
     // Get the current price based on selected billing cycle
@@ -225,6 +229,37 @@ export default () => {
         }
     };
 
+    const getDomainPayload = () =>
+        domainMappings.map(mapping => ({
+            domain_id: mapping.domain_id,
+            subdomain: mapping.subdomain,
+            port: mapping.port,
+            protocol: mapping.protocol,
+        }));
+
+    const addDomainMapping = () => {
+        const selected = customDomainOptions.find(domain => domain.id === selectedDomainId);
+        if (!selected || !mappingSubdomain.trim()) {
+            return;
+        }
+
+        setDomainMappings(current =>
+            current.concat({
+                domain_id: selected.id,
+                domain: selected.domain,
+                subdomain: mappingSubdomain.trim().toLowerCase(),
+                port: mappingPort,
+                protocol: mappingProtocol,
+            }),
+        );
+
+        setMappingSubdomain('');
+    };
+
+    const removeDomainMapping = (index: number) => {
+        setDomainMappings(current => current.filter((_, idx) => idx !== index));
+    };
+
     const createFree = () => {
         if (product && serverName.trim()) {
             const variables = Array.from(vars, ([key, value]) => ({ key, value }));
@@ -237,6 +272,7 @@ export default () => {
                 couponData?.coupon.id,
                 selectedEggId,
                 serverName.trim(),
+                getDomainPayload(),
             )
                 .then(() => navigate('/'))
                 .catch(error => clearAndAddHttpError({ key: 'account:billing:order', error }));
@@ -274,6 +310,13 @@ export default () => {
                 setNodes(nodesData);
                 const firstNodeId = nodesData.length > 0 ? Number(nodesData[0].id) : 0;
                 setSelectedNode(Number.isInteger(firstNodeId) && firstNodeId > 0 ? firstNodeId : 0);
+
+                const domainsData = await getAvailableCustomDomains();
+                setCustomDomainOptions(domainsData);
+                const firstDomain = domainsData[0];
+                if (firstDomain) {
+                    setSelectedDomainId(firstDomain.id);
+                }
 
                 if (productData.price !== 0) {
                     // Check which processors are available and fetch resources accordingly
@@ -547,6 +590,100 @@ export default () => {
                                 </div>
                             </div>
 
+                            {/* Custom Domain Mapping */}
+                            {customDomainOptions.length > 0 && (
+                                <div
+                                    className={'rounded-lg border p-6'}
+                                    style={{ backgroundColor: colors.secondary, borderColor: '#374151' }}
+                                >
+                                    <h3 className={'mb-4 text-lg font-semibold text-gray-200'}>Custom Domain Mapping</h3>
+                                    <p className={'mb-4 text-sm text-gray-400'}>
+                                        Optionally map one or more subdomains to server ports during provisioning.
+                                    </p>
+
+                                    <div className={'grid grid-cols-1 gap-3 md:grid-cols-6'}>
+                                        <div className={'md:col-span-2'}>
+                                            <Select
+                                                value={selectedDomainId}
+                                                onChange={e => setSelectedDomainId(Number(e.currentTarget.value))}
+                                            >
+                                                {customDomainOptions.map(option => (
+                                                    <option key={option.id} value={option.id}>
+                                                        {option.domain}
+                                                    </option>
+                                                ))}
+                                            </Select>
+                                        </div>
+                                        <div className={'md:col-span-2'}>
+                                            <Input
+                                                value={mappingSubdomain}
+                                                onChange={e => setMappingSubdomain(e.currentTarget.value.toLowerCase())}
+                                                placeholder={'subdomain'}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Input
+                                                type={'number'}
+                                                min={1}
+                                                max={65535}
+                                                value={mappingPort}
+                                                onChange={e => setMappingPort(Number(e.currentTarget.value))}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Select
+                                                value={mappingProtocol}
+                                                onChange={e =>
+                                                    setMappingProtocol(e.currentTarget.value as 'tcp' | 'udp' | 'both')
+                                                }
+                                            >
+                                                <option value={'both'}>Both</option>
+                                                <option value={'tcp'}>TCP</option>
+                                                <option value={'udp'}>UDP</option>
+                                            </Select>
+                                        </div>
+                                    </div>
+
+                                    <div className={'mt-3 flex items-center justify-end'}>
+                                        <Button.Text
+                                            type={'button'}
+                                            variant={Button.Variants.Secondary}
+                                            disabled={!mappingSubdomain.trim() || !selectedDomainId}
+                                            onClick={addDomainMapping}
+                                        >
+                                            Add Mapping
+                                        </Button.Text>
+                                    </div>
+
+                                    <div className={'mt-4 space-y-2'}>
+                                        {domainMappings.length < 1 && (
+                                            <div className={'rounded border border-gray-700 p-3 text-sm text-gray-400'}>
+                                                No custom domain mappings added.
+                                            </div>
+                                        )}
+
+                                        {domainMappings.map((mapping, index) => (
+                                            <div
+                                                key={`${mapping.domain_id}_${mapping.subdomain}_${mapping.port}_${index}`}
+                                                className={'flex items-center justify-between rounded border border-gray-700 p-3'}
+                                            >
+                                                <div className={'text-sm text-gray-300'}>
+                                                    {mapping.subdomain}.{mapping.domain} • {mapping.port} •{' '}
+                                                    {mapping.protocol.toUpperCase()}
+                                                </div>
+                                                <Button.Text
+                                                    type={'button'}
+                                                    variant={Button.Variants.Secondary}
+                                                    onClick={() => removeDomainMapping(index)}
+                                                >
+                                                    Remove
+                                                </Button.Text>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Legal Agreements */}
                             <div
                                 className={'rounded-lg border p-6'}
@@ -644,6 +781,7 @@ export default () => {
                                         couponId={couponData?.coupon.id}
                                         selectedEggId={selectedEggId}
                                         serverName={serverName}
+                                        domainPayload={getDomainPayload()}
                                     />
                                 )}
                             </div>

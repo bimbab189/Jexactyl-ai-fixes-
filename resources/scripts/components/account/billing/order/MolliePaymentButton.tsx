@@ -13,6 +13,12 @@ interface Props {
     couponId?: number;
     selectedEggId?: number;
     serverName: string;
+    domainPayload?: Array<{
+        domain_id: number;
+        subdomain: string;
+        port: number;
+        protocol: 'tcp' | 'udp' | 'both';
+    }>;
 }
 
 export default (data: Props) => {
@@ -45,6 +51,7 @@ export default (data: Props) => {
                 couponId: data.couponId,
                 eggId: data.selectedEggId,
                 name: data.serverName,
+                domainPayload: data.domainPayload,
             });
 
             // Redirect to Mollie checkout
